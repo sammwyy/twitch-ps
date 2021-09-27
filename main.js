@@ -1,6 +1,6 @@
-let WebSocket = require('ws'),
-  shortid = require('shortid'),
-  EventEmitter = require('events');
+let WebSocket = require("ws"),
+  shortid = require("shortid"),
+  EventEmitter = require("events");
 
 /**
  * Connection to Twitch Pubsub System
@@ -17,17 +17,23 @@ class TwitchPS extends EventEmitter {
    * @param {boolean} [options.debug=false] - Turns debug console output on and off
    * @param {string} [options.url='wss://pubsub-edge.twitch.tv'] - URL of WS to connect too. DEFAULT: Twitch {"wss://pubsub-edge.twitch.tv"}
    */
-  constructor(options = {
-    reconnect: true,
-    init_topics: {},
-    debug: false,
-    url: 'wss://pubsub-edge.twitch.tv'
-  }) {
+  constructor(
+    options = {
+      reconnect: true,
+      init_topics: {},
+      debug: false,
+      url: "wss://pubsub-edge.twitch.tv",
+    }
+  ) {
     super();
-    if (Object.prototype.toString.call(options.init_topics) != '[object Array]' || options.init_topics.length == 0) throw new Error('Missing initial topics');
+    if (
+      Object.prototype.toString.call(options.init_topics) != "[object Array]" ||
+      options.init_topics.length == 0
+    )
+      throw new Error("Missing initial topics");
     this._recon = options.reconnect;
     this._debug = options.debug;
-    this._url = (options.url) ? options.url : 'wss://pubsub-edge.twitch.tv';
+    this._url = options.url ? options.url : "wss://pubsub-edge.twitch.tv";
 
     this._init_topics = options.init_topics;
     this._topics = [];
@@ -42,7 +48,6 @@ class TwitchPS extends EventEmitter {
     this._ws = null;
 
     this._connect();
-
   }
 
   /**
@@ -51,9 +56,9 @@ class TwitchPS extends EventEmitter {
   _connect() {
     this._ws = new WebSocket(this._url);
     const self = this;
-    this._ws.on('open', () => {
+    this._ws.on("open", () => {
       self.addTopic(self._init_topics, true);
-      self.emit('connected');
+      self.emit("connected");
     });
     /**
      * MSG TYPES HANDLED:
@@ -74,19 +79,22 @@ class TwitchPS extends EventEmitter {
      *       ERR_SERVER
      *       ERR_BADTOPIC
      */
-    this._ws.on('message', (mess) => {
+    this._ws.on("message", (mess) => {
       try {
         let message = JSON.parse(mess);
-        // Emit 'raw' event on every message received 
-        self.emit('raw', message);
-        self._sendDebug('_connect()', message);
+        // Emit 'raw' event on every message received
+        self.emit("raw", message);
+        self._sendDebug("_connect()", message);
 
-        if (message.type === 'RESPONSE') {
+        if (message.type === "RESPONSE") {
           if (message.nonce === self._init_nonce) {
             self._init_nonce = null;
             if (message.error !== "") {
               self._pending[message.nonce].reject(message.error);
-              self._handleError('MESSAGE RESPONSE - Error while listening to initial topics', message.error);
+              self._handleError(
+                "MESSAGE RESPONSE - Error while listening to initial topics",
+                message.error
+              );
             } else {
               self._pending[message.nonce].resolve();
             }
@@ -98,62 +106,72 @@ class TwitchPS extends EventEmitter {
                 self._pending[message.nonce].resolve();
               }
             } else {
-              self._handleError('MESSAGE RESPONSE', 'Received message with unknown nonce');
+              self._handleError(
+                "MESSAGE RESPONSE",
+                "Received message with unknown nonce"
+              );
             }
           }
-
-        } else if (message.type === 'MESSAGE') {
-          if (typeof message.data.message === 'string') message.data.message = JSON.parse(message.data.message);
-          let split = message.data.topic.split('.'),
+        } else if (message.type === "MESSAGE") {
+          if (typeof message.data.message === "string")
+            message.data.message = JSON.parse(message.data.message);
+          let split = message.data.topic.split("."),
             channel = split[1];
-          switch (message.data.topic.substr(0, message.data.topic.indexOf('.'))) {
-            case 'channel-bits-events-v1':
-            case 'channel-bits-events-v2':
+          switch (
+            message.data.topic.substr(0, message.data.topic.indexOf("."))
+          ) {
+            case "channel-bits-events-v1":
+            case "channel-bits-events-v2":
               self._onBits(message);
               break;
-            case 'channel-bits-badge-unlocks':
+            case "channel-bits-badge-unlocks":
               self._onBitsBadgeUnlocks(message);
               break;
-            case 'channel-points-channel-v1':
+            case "channel-points-channel-v1":
               self._onChannelPoints(message);
               break;
-            case 'community-points-channel-v1':
+            case "community-points-channel-v1":
               self._onCommunityPoints(message);
               break;
-            case 'channel-subscribe-events-v1':
+            case "channel-subscribe-events-v1":
               self._onSub(message);
               break;
-            case 'whispers':
+            case "whispers":
               self._onWhisper(message);
               break;
-            case 'video-playback':
+            case "video-playback":
               self._onVideoPlayback(message, channel);
               break;
-            case 'chat_moderator_actions':
+            case "chat_moderator_actions":
               self._onModeratorAction(message);
               break;
           }
-        } else if (message.type === 'RECONNECT') {
+        } else if (message.type === "RECONNECT") {
           self._reconnect();
-        } else if (message.type === 'PONG') {
-          self._sendDebug('In messageType Pong', 'Received pong');
+        } else if (message.type === "PONG") {
+          self._sendDebug("In messageType Pong", "Received pong");
           clearTimeout(self._timeout);
           self._timeout = null;
         } else {
-          self._handleError('MESSAGE RESPONSE - Unknown message type', message);
+          self._handleError("MESSAGE RESPONSE - Unknown message type", message);
         }
       } catch (e) {
-        self._handleError('Error caught in _connect() on message', e);
+        self._handleError("Error caught in _connect() on message", e);
       }
     });
 
-    this._ws.on('close', () => {
-      self._sendDebug('In websocket close', '');
-      self.emit('disconnected');
+    this._ws.on("error", (err) => {
+      self.emit(err);
+    });
+
+    this._ws.on("close", () => {
+      self._sendDebug("In websocket close", "");
+      self.emit("disconnected");
       if (self._recon) {
-        self.emit('reconnect');
+        self.emit("reconnect");
         setTimeout(() => {
-          self._ws = new WebSocket(self._url);
+          self._connect();
+          // self._ws = new WebSocket(self._url);
         }, 1000 * self._tries);
         self._tries += 1;
       }
@@ -165,10 +183,12 @@ class TwitchPS extends EventEmitter {
 
     self._interval = setInterval(() => {
       if (self._ws.readyState === 1) {
-        self._ws.send(JSON.stringify({
-          type: 'PING'
-        }));
-        self._sendDebug('In setInterval', 'Sent ping');
+        self._ws.send(
+          JSON.stringify({
+            type: "PING",
+          })
+        );
+        self._sendDebug("In setInterval", "Sent ping");
         self._timeout = setTimeout(() => self._reconnect(), 15000);
       }
     }, 300000);
@@ -180,8 +200,8 @@ class TwitchPS extends EventEmitter {
   _reconnect() {
     const self = this;
     self._ws.terminate();
-    self._sendDebug('_reconnect()', 'Websocket has been terminated');
-    self.emit('reconnect');
+    self._sendDebug("_reconnect()", "Websocket has been terminated");
+    self.emit("reconnect");
     setTimeout(() => {
       self._connect();
     }, 5000);
@@ -215,23 +235,22 @@ class TwitchPS extends EventEmitter {
    */
   _onBits(message) {
     // TODO ADD VERSION CHECK/EMIT
-    this.emit('bits', {
-      "badge_entitlement": message.data.message.data.badge_entitlement, // v2 only
-      "bits_used": message.data.message.data.bits_used,
-      "channel_id": message.data.message.data.channel_id,
-      "channel_name": message.data.message.data.channel_name,
-      "chat_message": message.data.message.data.chat_message,
-      "context": message.data.message.data.context,
-      "is_anonymous": message.data.message.data.is_anonymous, // v2 only
-      "message_id": message.data.message.message_id,
-      "message_type": message.data.message.message_type,
-      "time": message.data.message.data.time,
-      "total_bits_used": message.data.message.data.total_bits_used,
-      "user_id": message.data.message.data.user_id,
-      "user_name": message.data.message.data.user_name,
-      "version": message.data.message.version
+    this.emit("bits", {
+      badge_entitlement: message.data.message.data.badge_entitlement, // v2 only
+      bits_used: message.data.message.data.bits_used,
+      channel_id: message.data.message.data.channel_id,
+      channel_name: message.data.message.data.channel_name,
+      chat_message: message.data.message.data.chat_message,
+      context: message.data.message.data.context,
+      is_anonymous: message.data.message.data.is_anonymous, // v2 only
+      message_id: message.data.message.message_id,
+      message_type: message.data.message.message_type,
+      time: message.data.message.data.time,
+      total_bits_used: message.data.message.data.total_bits_used,
+      user_id: message.data.message.data.user_id,
+      user_name: message.data.message.data.user_name,
+      version: message.data.message.version,
     });
-
   }
 
   /**
@@ -252,14 +271,14 @@ class TwitchPS extends EventEmitter {
    *                     time - {string} - Time when the bits were used. RFC 3339 format
    */
   _onBitsBadgeUnlocks(message) {
-    this.emit('bits-badge', {
-      "user_id": message.data.message.data.user_id,
-      "user_name": message.data.message.data.user_name,
-      "channel_id": message.data.message.data.channel_id,
-      "channel_name": message.data.message.data.channel_name,
-      "chat_message": message.data.message.data.chat_message,
-      "badge_tier": message.data.message.data.badge_tier,
-      "time": message.data.message.data.time
+    this.emit("bits-badge", {
+      user_id: message.data.message.data.user_id,
+      user_name: message.data.message.data.user_name,
+      channel_id: message.data.message.data.channel_id,
+      channel_name: message.data.message.data.channel_name,
+      chat_message: message.data.message.data.chat_message,
+      badge_tier: message.data.message.data.badge_tier,
+      time: message.data.message.data.time,
     });
   }
 
@@ -281,14 +300,14 @@ class TwitchPS extends EventEmitter {
    *                     status - {string} - reward redemption status, will be FULFULLED if a user skips the reward queue, UNFULFILLED otherwise
    */
   _onChannelPoints(message) {
-    this.emit('channel-points', {
-      "timestamp": message.data.message.data.timestamp,
-      "redemption": message.data.message.data.redemption,
-      "channel_id": message.data.message.data.redemption.channel_id,
-      "redeemed_at": message.data.message.data.redemption.redeemed_at,
-      "reward": message.data.message.data.redemption.reward,
-      "user_input": message.data.message.data.redemption.user_input,
-      "status": message.data.message.data.redemption.status
+    this.emit("channel-points", {
+      timestamp: message.data.message.data.timestamp,
+      redemption: message.data.message.data.redemption,
+      channel_id: message.data.message.data.redemption.channel_id,
+      redeemed_at: message.data.message.data.redemption.redeemed_at,
+      reward: message.data.message.data.redemption.reward,
+      user_input: message.data.message.data.redemption.user_input,
+      status: message.data.message.data.redemption.status,
     });
   }
 
@@ -303,28 +322,28 @@ class TwitchPS extends EventEmitter {
    * community-custom-reward-deleted, community-goal-created, community-goal-updated,
    * community-goal-deleted, channel-points
    *          community-points-all
-   *            JSON object - 
+   *            JSON object -
    *                        type - {string} - Type of the event
    *                        timestamp - {string} - Time the pubsub message was sent
    *                        event - {object} - All data from all points events
    *          community-reward-created
-   *            JSON object - 
+   *            JSON object -
    *                        timestamp - {string} - Time the pubsub message was sent
    *                        event - {object} - All data from the event
    *          community-reward-updated
-   *            JSON object - 
+   *            JSON object -
    *                        timestamp - {string} - Time the pubsub message was sent
    *                        event - {object} - All data from the event
    *          community-reward-deleted
-   *            JSON object - 
+   *            JSON object -
    *                        timestamp - {string} - Time the pubsub message was sent
    *                        event - {object} - All data from the event
    *          community-goal-created
-   *            JSON object - 
+   *            JSON object -
    *                        timestamp - {string} - Time the pubsub message was sent
    *                        event - {object} - All data from the event
    *          community-goal-updated
-   *            JSON object - 
+   *            JSON object -
    *                        timestamp - {string} - Time the pubsub message was sent
    *                        event - {object} - All data from the event
    *          community-goal-deleted
@@ -332,71 +351,74 @@ class TwitchPS extends EventEmitter {
    *                        timestamp - {string} - Time the pubsub message was sent
    *                        event - {object} - All data from the event
    *          channel-points
-   *            JSON object - 
+   *            JSON object -
    *                        timestamp - {string} - Time the pubsub message was sent
    *                        redemption - {object} - Data about the redemption, includes unique id and user that redeemed it
    *                        channel_id - {string} - ID of the channel in which the reward was redeemed.
    *                        redeemed_at - {string} - Timestamp in which a reward was redeemed
    *                        reward - {object} - Data about the reward that was redeemed
    *                        user_input - {string} - [Optional] A string that the user entered if the reward requires input
-   *                        status - {string} - reward redemption status, will be FULFULLED if a user skips the reward queue, UNFULFILLED otherwise  
+   *                        status - {string} - reward redemption status, will be FULFULLED if a user skips the reward queue, UNFULFILLED otherwise
    */
   _onCommunityPoints(message) {
-    this.emit('community-points-all', {
-      "type": message.data.message.type,
-      "timestamp": message.data.message.data.timestamp,
-      "event": message.data.message.data[`${Object.keys(message.data.message.data)[1]}`]
+    this.emit("community-points-all", {
+      type: message.data.message.type,
+      timestamp: message.data.message.data.timestamp,
+      event:
+        message.data.message.data[
+          `${Object.keys(message.data.message.data)[1]}`
+        ],
     });
-    switch(message.data.message.type){
+    switch (message.data.message.type) {
       case "reward-redeemed":
-        this.emit('reward-redeemed', {
-          "timestamp": message.data.message.data.timestamp,
-          "redemption": message.data.message.data.redemption,
-          "channel_id": message.data.message.data.redemption.channel_id,
-          "redeemed_at": message.data.message.data.redemption.redeemed_at,
-          "reward": message.data.message.data.redemption.reward,
-          "user_input": message.data.message.data.redemption.user_input,
-          "status": message.data.message.data.redemption.status
+        this.emit("reward-redeemed", {
+          timestamp: message.data.message.data.timestamp,
+          redemption: message.data.message.data.redemption,
+          channel_id: message.data.message.data.redemption.channel_id,
+          redeemed_at: message.data.message.data.redemption.redeemed_at,
+          reward: message.data.message.data.redemption.reward,
+          user_input: message.data.message.data.redemption.user_input,
+          status: message.data.message.data.redemption.status,
         });
         break;
       case "custom-reward-created":
-        this.emit('community-reward-created', {
-          "timestamp": message.data.message.data.timestamp,
-          "event": message.data.message.data.new_reward
+        this.emit("community-reward-created", {
+          timestamp: message.data.message.data.timestamp,
+          event: message.data.message.data.new_reward,
         });
         break;
       case "custom-reward-updated":
-        this.emit('community-reward-updated', {
-          "timestamp": message.data.message.data.timestamp,
-          "event": message.data.message.data.updated_reward
+        this.emit("community-reward-updated", {
+          timestamp: message.data.message.data.timestamp,
+          event: message.data.message.data.updated_reward,
         });
         break;
       case "custom-reward-deleted":
-        this.emit('community-reward-deleted', {
-          "timestamp": message.data.message.data.timestamp,
-          "event": message.data.message.data.deleted_reward
+        this.emit("community-reward-deleted", {
+          timestamp: message.data.message.data.timestamp,
+          event: message.data.message.data.deleted_reward,
         });
         break;
       case "community-goal-created":
-        this.emit('community-goal-created', {
-          "timestamp": message.data.message.data.timestamp,
-          "event": message.data.message.data.community_goal
+        this.emit("community-goal-created", {
+          timestamp: message.data.message.data.timestamp,
+          event: message.data.message.data.community_goal,
         });
         break;
       case "community-goal-updated":
-        this.emit('community-goal-updated', {
-          "timestamp": message.data.message.data.timestamp,
-          "event": message.data.message.data.community_goal
+        this.emit("community-goal-updated", {
+          timestamp: message.data.message.data.timestamp,
+          event: message.data.message.data.community_goal,
         });
         break;
       case "community-goal-deleted":
-        this.emit('community-goal-deleted', {
-          "timestamp": message.data.message.data.timestamp,
-          "event": message.data.message.data.community_goal
+        this.emit("community-goal-deleted", {
+          timestamp: message.data.message.data.timestamp,
+          event: message.data.message.data.community_goal,
         });
         break;
       default:
-        // Do Nothing
+      // Do Nothing
     }
   }
 
@@ -425,27 +447,27 @@ class TwitchPS extends EventEmitter {
    *                     sub_message.emotes - {array} - Array of emotes
    */
   _onSub(message) {
-    this.emit('subscribe', {
-      "user_name": message.data.message.user_name,
-      "benefit_end_month": message.data.message.benefit_end_month,
-      "display_name": message.data.message.display_name,
-      "channel_name": message.data.message.channel_name,
-      "user_id": message.data.message.user_id,
-      "channel_id": message.data.message.channel_id,
-      "time": message.data.message.time,
-      "sub_plan": message.data.message.sub_plan,
-      "sub_plan_name": message.data.message.sub_plan_name,
-      "months": message.data.message.months, // Depecrecated, but still used by gift subs
-      "cumulative_months": message.data.message.cumulative_months,
-      "streak_months": message.data.message.streak_months,
-      "context": message.data.message.context,
-      "sub_message": {
-        "message": message.data.message.sub_message.message,
-        "emotes": message.data.message.sub_message.emotes
+    this.emit("subscribe", {
+      user_name: message.data.message.user_name,
+      benefit_end_month: message.data.message.benefit_end_month,
+      display_name: message.data.message.display_name,
+      channel_name: message.data.message.channel_name,
+      user_id: message.data.message.user_id,
+      channel_id: message.data.message.channel_id,
+      time: message.data.message.time,
+      sub_plan: message.data.message.sub_plan,
+      sub_plan_name: message.data.message.sub_plan_name,
+      months: message.data.message.months, // Depecrecated, but still used by gift subs
+      cumulative_months: message.data.message.cumulative_months,
+      streak_months: message.data.message.streak_months,
+      context: message.data.message.context,
+      sub_message: {
+        message: message.data.message.sub_message.message,
+        emotes: message.data.message.sub_message.emotes,
       },
-      "recipient_id": message.data.message.recipient_id,
-      "recipient_user_name": message.data.message.recipient_user_name,
-      "recipient_display_name": message.data.message.recipient_display_name
+      recipient_id: message.data.message.recipient_id,
+      recipient_user_name: message.data.message.recipient_user_name,
+      recipient_display_name: message.data.message.recipient_display_name,
     });
   }
 
@@ -478,11 +500,15 @@ class TwitchPS extends EventEmitter {
    *                     nonce - {string} - Nonce associated with whisper message
    */
   _onWhisper(message) {
-    if (typeof message.data.message.tags === 'string') message.data.message.tags = JSON.parse(message.data.message.tags);
-    if (typeof message.data.message.recipient === 'string') message.data.message.recipient = JSON.parse(message.data.message.recipient);
+    if (typeof message.data.message.tags === "string")
+      message.data.message.tags = JSON.parse(message.data.message.tags);
+    if (typeof message.data.message.recipient === "string")
+      message.data.message.recipient = JSON.parse(
+        message.data.message.recipient
+      );
     switch (message.data.message.type) {
-      case 'whisper_sent':
-        this.emit('whisper_sent', {
+      case "whisper_sent":
+        this.emit("whisper_sent", {
           id: message.data.message.data_object.id,
           body: message.data.message.data_object.body,
           thread_id: message.data.message.data_object.thread_id,
@@ -492,21 +518,22 @@ class TwitchPS extends EventEmitter {
             display_name: message.data.message.data_object.tags.display_name,
             color: message.data.message.data_object.tags.color,
             badges: message.data.message.data_object.tags.badges,
-            emotes: message.data.message.data_object.tags.emotes
+            emotes: message.data.message.data_object.tags.emotes,
           },
           recipient: {
             id: message.data.message.data_object.recipient.id,
             username: message.data.message.data_object.recipient.username,
-            display_name: message.data.message.data_object.recipient.display_name,
+            display_name:
+              message.data.message.data_object.recipient.display_name,
             color: message.data.message.data_object.recipient.color,
-            badges: message.data.message.data_object.recipient.badges
+            badges: message.data.message.data_object.recipient.badges,
           },
           sent_ts: message.data.message.data_object.sent_ts,
-          nonce: message.data.message.data_object.nonce
+          nonce: message.data.message.data_object.nonce,
         });
         break;
-      case 'whisper_received':
-        this.emit('whisper_received', {
+      case "whisper_received":
+        this.emit("whisper_received", {
           id: message.data.message.data_object.id,
           body: message.data.message.data_object.body,
           thread_id: message.data.message.data_object.thread_id,
@@ -516,22 +543,23 @@ class TwitchPS extends EventEmitter {
             display_name: message.data.message.data_object.tags.display_name,
             color: message.data.message.data_object.tags.color,
             badges: message.data.message.data_object.tags.badges,
-            emotes: message.data.message.data_object.tags.emotes
+            emotes: message.data.message.data_object.tags.emotes,
           },
           recipient: {
             id: message.data.message.data_object.recipient.id,
             username: message.data.message.data_object.recipient.username,
-            display_name: message.data.message.data_object.recipient.display_name,
+            display_name:
+              message.data.message.data_object.recipient.display_name,
             color: message.data.message.data_object.recipient.color,
-            badges: message.data.message.data_object.recipient.badges
+            badges: message.data.message.data_object.recipient.badges,
           },
           sent_ts: message.data.message.data_object.sent_ts,
-          nonce: message.data.message.data_object.nonce
+          nonce: message.data.message.data_object.nonce,
         });
         break;
-      case 'thread':
-        this.emit('thread', {
-          thread_id: message.data.message.data_object.thread_id
+      case "thread":
+        this.emit("thread", {
+          thread_id: message.data.message.data_object.thread_id,
         });
         break;
     }
@@ -562,22 +590,22 @@ class TwitchPS extends EventEmitter {
    *                      viewers - {integer} - Number of viewers currently watching
    */
   _onVideoPlayback(message, channel) {
-    if (message.data.message.type === 'stream-up') {
-      this.emit('stream-up', {
+    if (message.data.message.type === "stream-up") {
+      this.emit("stream-up", {
         time: message.data.message.server_time,
         channel_name: channel,
-        play_delay: message.data.message.play_delay
+        play_delay: message.data.message.play_delay,
       });
-    } else if (message.data.message.type === 'stream-down') {
-      this.emit('stream-down', {
-        time: message.data.message.server_time,
-        channel_name: channel
-      });
-    } else if (message.data.message.type === 'viewcount') {
-      this.emit('viewcount', {
+    } else if (message.data.message.type === "stream-down") {
+      this.emit("stream-down", {
         time: message.data.message.server_time,
         channel_name: channel,
-        viewers: message.data.message.viewers
+      });
+    } else if (message.data.message.type === "viewcount") {
+      this.emit("viewcount", {
+        time: message.data.message.server_time,
+        channel_name: channel,
+        viewers: message.data.message.viewers,
       });
     }
   }
@@ -617,8 +645,8 @@ class TwitchPS extends EventEmitter {
    */
   _onModeratorAction(message) {
     switch (message.data.message.data.moderation_action) {
-      case 'ban':
-        this.emit('ban', {
+      case "ban":
+        this.emit("ban", {
           target: message.data.message.data.args[0],
           target_user_id: message.data.message.data.target_user_id,
           created_by: message.data.message.data.created_by,
@@ -626,16 +654,16 @@ class TwitchPS extends EventEmitter {
           reason: message.data.message.data.args[1] || null,
         });
         break;
-      case 'unban':
-        this.emit('unban', {
+      case "unban":
+        this.emit("unban", {
           target: message.data.message.data.args[0],
           target_user_id: message.data.message.data.target_user_id,
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'timeout':
-        this.emit('timeout', {
+      case "timeout":
+        this.emit("timeout", {
           target: message.data.message.data.args[0],
           target_user_id: message.data.message.data.target_user_id,
           created_by: message.data.message.data.created_by,
@@ -644,82 +672,82 @@ class TwitchPS extends EventEmitter {
           reason: message.data.message.data.args[2] || null,
         });
         break;
-      case 'unhost':
-        this.emit('unhost', {
+      case "unhost":
+        this.emit("unhost", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'emoteonly':
-        this.emit('emoteonly', {
+      case "emoteonly":
+        this.emit("emoteonly", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'emoteonlyoff':
-        this.emit('emoteonlyoff', {
+      case "emoteonlyoff":
+        this.emit("emoteonlyoff", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'followers':
-        this.emit('followers', {
+      case "followers":
+        this.emit("followers", {
           length: message.data.message.data.args[0], // in minutes
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'followersoff':
-        this.emit('followersoff', {
+      case "followersoff":
+        this.emit("followersoff", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'subscribers':
-        this.emit('subscribers', {
+      case "subscribers":
+        this.emit("subscribers", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'subscribersoff':
-        this.emit('subscribersoff', {
+      case "subscribersoff":
+        this.emit("subscribersoff", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'r9kbeta':
-        this.emit('r9kbeta', {
+      case "r9kbeta":
+        this.emit("r9kbeta", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'r9kbetaoff':
-        this.emit('r9kbetaoff', {
+      case "r9kbetaoff":
+        this.emit("r9kbetaoff", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'slow':
-        this.emit('slow', {
+      case "slow":
+        this.emit("slow", {
           length: message.data.message.data.args[0], // in seconds
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'slowoff':
-        this.emit('slowoff', {
+      case "slowoff":
+        this.emit("slowoff", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'clear':
-        this.emit('clear', {
+      case "clear":
+        this.emit("clear", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
         });
         break;
-      case 'automod_rejected': 
-        this.emit('automod_rejected', {
+      case "automod_rejected":
+        this.emit("automod_rejected", {
           user: message.data.message.data.target_user_login,
           user_id: message.data.message.data.target_user_id,
           message_id: message.data.message.data.msg_id,
@@ -727,8 +755,8 @@ class TwitchPS extends EventEmitter {
           reason: message.data.message.data.args[2],
         });
         break;
-      case 'approved_automod_message': 
-        this.emit('approved_automod_message', {
+      case "approved_automod_message":
+        this.emit("approved_automod_message", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
           message_id: message.data.message.data.msg_id,
@@ -736,8 +764,8 @@ class TwitchPS extends EventEmitter {
           target_user_id: message.data.message.data.target_user_id,
         });
         break;
-      case 'denied_automod_message': 
-        this.emit('denied_automod_message', {
+      case "denied_automod_message":
+        this.emit("denied_automod_message", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
           message_id: message.data.message.data.msg_id,
@@ -745,36 +773,36 @@ class TwitchPS extends EventEmitter {
           target_user_id: message.data.message.data.target_user_id,
         });
         break;
-      case 'add_permitted_term': 
-        this.emit('add_permitted_term', {
+      case "add_permitted_term":
+        this.emit("add_permitted_term", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
           approved_term: message.data.message.data.args[0],
         });
         break;
-      case 'delete_permitted_term': 
-        this.emit('delete_permitted_term', {
+      case "delete_permitted_term":
+        this.emit("delete_permitted_term", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
           deleted_term: message.data.message.data.args[0],
         });
         break;
-      case 'add_blocked_term': 
-        this.emit('add_blocked_term', {
+      case "add_blocked_term":
+        this.emit("add_blocked_term", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
           approved_term: message.data.message.data.args[0],
         });
         break;
-      case 'delete_blocked_term': 
-        this.emit('delete_blocked_term', {
+      case "delete_blocked_term":
+        this.emit("delete_blocked_term", {
           created_by: message.data.message.data.created_by,
           created_by_user_id: message.data.message.data.created_by_user_id,
           blocked_term: message.data.message.data.args[0],
         });
         break;
       default:
-        // Do Nothing
+      // Do Nothing
     }
   }
 
@@ -790,7 +818,7 @@ class TwitchPS extends EventEmitter {
    * @param {string} error - Error message to emit
    */
   _handleError(origin, error, topic = null) {
-    this.emit('error', {
+    this.emit("error", {
       origin,
       error,
       topic,
@@ -805,7 +833,10 @@ class TwitchPS extends EventEmitter {
   _sendDebug(origin, mess) {
     if (this._debug) {
       let d = new Date();
-      console.log('TwitchPS -- ' + d.toLocaleString() + ' -- in ' + origin + ' -- ', mess);
+      console.log(
+        "TwitchPS -- " + d.toLocaleString() + " -- in " + origin + " -- ",
+        mess
+      );
     }
   }
 
@@ -815,13 +846,13 @@ class TwitchPS extends EventEmitter {
   _wait(callback) {
     setTimeout(() => {
       if (this._ws.readyState === 1) {
-        this._sendDebug('_wait()', 'Connected');
+        this._sendDebug("_wait()", "Connected");
         if (callback != null) {
           callback();
         }
         return;
       }
-      this._sendDebug('_wait()', 'Waiting for connection');
+      this._sendDebug("_wait()", "Waiting for connection");
       this._wait(callback);
     }, 500);
   }
@@ -852,33 +883,34 @@ class TwitchPS extends EventEmitter {
           this._pending[nonce] = {
             resolve: () => {
               this._topics.push(top);
-              this._sendDebug('addTopic()', `Topic added successfully: ${top}`);
+              this._sendDebug("addTopic()", `Topic added successfully: ${top}`);
               delete this._pending[nonce];
               return res();
             },
             reject: (err) => {
-              this._handleError('addTopic()', err, top);
+              this._handleError("addTopic()", err, top);
               delete this._pending[nonce];
               return rej(err);
-            }
+            },
           };
-          this._ws.send(JSON.stringify({
-            type: 'LISTEN',
-            nonce,
-            data: {
-              topics: [top],
-              auth_token: tok
-            }
-          }));
+          this._ws.send(
+            JSON.stringify({
+              type: "LISTEN",
+              nonce,
+              data: {
+                topics: [top],
+                auth_token: tok,
+              },
+            })
+          );
           setTimeout(() => {
             if (this._pending[nonce]) {
-              this._pending[nonce].reject('timeout');
+              this._pending[nonce].reject("timeout");
             }
           }, 10000);
         }
       });
     });
-
   }
 
   /**
@@ -906,21 +938,22 @@ class TwitchPS extends EventEmitter {
             reject: (err) => {
               delete this._pending[nonce];
               return reject(err);
-            }
+            },
           };
-          this._ws.send(JSON.stringify({
-            type: 'UNLISTEN',
-            nonce,
-            data: {
-              topics: [top]
-            }
-          }));
+          this._ws.send(
+            JSON.stringify({
+              type: "UNLISTEN",
+              nonce,
+              data: {
+                topics: [top],
+              },
+            })
+          );
         }
       });
     });
   }
 
   /***** End External Functions *****/
-
 }
 module.exports = TwitchPS;
