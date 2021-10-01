@@ -1,7 +1,7 @@
-# [TwitchPS](https://github.com/jctrvlr/twitchps)
+# [Twitch-PubSub](https://github.com/sammwyy/twitch-ps)
 
- [![dependency status](https://david-dm.org/jctrvlr/twitchps.svg)](https://david-dm.org/jctrvlr/twitchps)
- [![Downloads](https://img.shields.io/npm/dm/twitchps.svg?style=flat)](https://www.npmjs.org/package/twitchps) [![Version](https://img.shields.io/npm/v/twitchps.svg?style=flat)](https://www.npmjs.org/package/twitchps)  [![GitHub issues](https://img.shields.io/github/issues/jctrvlr/twitchPS.svg)](https://github.com/jctrvlr/twitchPS/issues) [![Build Status](https://travis-ci.org/jctrvlr/twitchPS.svg?branch=master)](https://travis-ci.org/jctrvlr/twitchPS)
+ [![dependency status](https://david-dm.org/sammwyy/twitch-ps.svg)](https://david-dm.org/sammwyy/twitch-ps)
+ [![Downloads](https://img.shields.io/npm/dm/@sammwy/twitch-ps.svg?style=flat)](https://www.npmjs.org/package/@sammwy/twitch-ps) [![Version](https://img.shields.io/npm/v/@sammwy/twitch-ps.svg?style=flat)](https://www.npmjs.org/package/@sammwy/twitch-ps)  [![GitHub issues](https://img.shields.io/github/issues/sammwyy/twitch-ps.svg)](https://github.com/sammwyy/twitch-ps/issues) [![Build Status](https://travis-ci.org/sammwyy/twitch-ps.svg?branch=master)](https://travis-ci.org/sammwyy/twitch-ps)
 
 Neat little [Node](http://nodejs.org) library which lets you easily interact with the Twitch.tv PubSub service.
 
