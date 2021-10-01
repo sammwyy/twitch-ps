@@ -41,7 +41,7 @@ npm i twitchps --save
 | debug  | boolean  | True  | False  |  Turns debug console output on and off. |
 
 ~~~ javascript
-const TwitchPS = require('twitchps');
+const TwitchPS = require('@sammwy/twitch-ps');
 
 // Initial topics are required
 let init_topics = [{topic: 'video-playback.bajheera'}, {topic: 'whispers.44322889', token: 'nkuaf7ur3trg7ju37md1y3u5p52s3q'}];
